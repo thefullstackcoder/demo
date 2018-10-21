@@ -1,0 +1,33 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: {{ template "core.fullname" . }}-gateway
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "demo.kubedemo.local"    
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ template "core.fullname" . }}  
+spec:
+  hosts:
+  - "demo.kubedemo.local"
+  gateways:
+  - {{ template "core.fullname" . }}-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /   
+    route:
+    - destination:
+        port:
+          number: 8090
+        host: {{ template "core.fullname" . }}-svc

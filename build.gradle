@@ -1,0 +1,101 @@
+group 'org.fullstackcoder'
+version '1.0-SNAPSHOT'
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+          url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.5.5.RELEASE")
+        classpath "org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:2.5"
+        classpath "gradle.plugin.com.github.lkishalmi.gatling:gradle-gatling-plugin:0.7.1"
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: "org.sonarqube"
+apply plugin: "jacoco"
+apply plugin: "com.github.lkishalmi.gatling"
+
+jar {
+    baseName = 'demo'
+    version =  '0.1.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    //Declaring this source set creates compile time and runtime configurations for it.
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+    }
+}
+
+//Configures the compile and runtime configurations for our integration tests
+//and includes the dependencies of the test task.
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile("org.springframework.boot:spring-boot-starter-web")
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+//Create the task that runs the integration tests found from the
+//configured source directory and uses the correct classpath.
+task integrationTest(type: Test) {
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    //If you want to ensure that integration tests are run every time when you invoke
+    //this task, uncomment the following line.
+    //outputs.upToDateWhen { false }
+}
+
+//Ensure that the check task fails the build if there are failing integration tests.
+check.dependsOn integrationTest
+//Ensure that our unit tests are run before our integration tests
+integrationTest.mustRunAfter test
+
+//Ensure that the HTML reports of unit and integration tests are written to different directories.
+tasks.withType(Test) {
+    reports.html.destination = file("${reporting.baseDir}/${name}")
+}
+
+test {
+    reports {
+        junitXml.enabled = true
+        html.enabled = true
+    }
+}
+
+jacocoTestReport {
+    group = "Reporting"
+    reports {
+        xml.enabled true
+        csv.enabled false
+        html.destination "${buildDir}/reports/coverage"
+    }
+}
+
+task packageTests(type: Jar) {
+    from sourceSets.test.output
+        appendix = 'integ-tests'
+}
